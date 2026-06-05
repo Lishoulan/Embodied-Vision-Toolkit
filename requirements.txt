@@ -1,0 +1,14 @@
+# ════════════════════════════════════════════════
+# Embodied Vision Toolkit — Python Dependencies
+# ════════════════════════════════════════════════
+
+# Core
+numpy>=1.22.0
+opencv-python>=4.5.0
+matplotlib>=3.5.0
+
+# Data & Science
+scipy>=1.9.0
+
+# 3DGS Pipeline (optional)
+# nerfstudio>=0.3.0
