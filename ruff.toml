@@ -1,0 +1,27 @@
+# Ruff 配置 — Embodied Vision Toolkit Python 代码风格
+# 替代 flake8 + isort + black
+
+line-length = 100
+target-version = "py39"
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "C4",   # flake8-comprehensions
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "N803",  # argument name should be lowercase (math conventions: P, Q, Z)
+    "N806",  # variable in function should be lowercase (math: K, F, R, T)
+]
+
+[format]
+quote-style = "double"
+indent-style = "space"

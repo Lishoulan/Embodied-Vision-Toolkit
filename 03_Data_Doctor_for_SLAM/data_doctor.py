@@ -18,6 +18,7 @@ import cv2
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass, field
+from collections import deque
 
 
 # ════════════════════════════════════════════════
@@ -44,6 +45,16 @@ class EpipolarDriftReport:
     max_epipolar_error: float    # 最大极线重投影误差 [px]
     outlier_ratio: float         # 异常点比例
     drift_detected: bool         # 是否检测到外参漂移
+
+
+@dataclass
+class DriftTrendReport:
+    """漂移趋势预测报告"""
+    frame_id: int
+    window_mean: float           # 滑动窗口内平均极线误差 [px]
+    window_trend: float          # 线性回归斜率 [px/frame]，正值=漂移加剧
+    predicted_error: float        # 预测下一帧极线误差 [px]
+    trend_status: str            # "STABLE" / "DRIFTING" / "CRITICAL"
 
 
 # ════════════════════════════════════════════════
@@ -225,6 +236,148 @@ class EpipolarDriftMonitor:
     @property
     def history(self) -> List[EpipolarDriftReport]:
         return self._history
+
+
+# ════════════════════════════════════════════════
+# Module 2.5: 滑动窗口漂移趋势预测
+# ════════════════════════════════════════════════
+
+class DriftTrendPredictor:
+    """
+    基于滑动窗口的极线漂移趋势预测器
+
+    核心思路：
+        1. 维护最近 W 帧的极线误差滑动窗口
+        2. 对窗口内数据做线性回归，提取漂移趋势（斜率）
+        3. 基于趋势预测未来误差，提前告警
+
+    应用场景：
+        - 热胀冷缩导致的外参缓慢漂移（斜率持续为正）
+        - 机械碰撞导致的阶跃式跳变（窗口均值突变）
+        - 正常运行中的随机波动（斜率 ≈ 0）
+    """
+
+    def __init__(
+        self,
+        window_size: int = 30,
+        stable_slope_threshold: float = 0.01,    # [px/frame] 稳定斜率阈值
+        drifting_slope_threshold: float = 0.05,  # [px/frame] 漂移告警阈值
+        critical_mean_threshold: float = 3.0     # [px] 临界均值阈值
+    ):
+        self.window_size = window_size
+        self.stable_slope_threshold = stable_slope_threshold
+        self.drifting_slope_threshold = drifting_slope_threshold
+        self.critical_mean_threshold = critical_mean_threshold
+        self._window: deque = deque(maxlen=window_size)
+
+    def update(
+        self,
+        epipolar_report: EpipolarDriftReport
+    ) -> DriftTrendReport:
+        """
+        输入最新帧的极线报告，输出趋势预测
+
+        Args:
+            epipolar_report: 单帧极线漂移报告
+
+        Returns:
+            DriftTrendReport: 包含趋势斜率、预测误差、状态判定
+        """
+        self._window.append(epipolar_report.mean_epipolar_error)
+
+        # 窗口数据不足时，仅做均值统计
+        if len(self._window) < 3:
+            return DriftTrendReport(
+                frame_id=epipolar_report.frame_id,
+                window_mean=np.mean(self._window),
+                window_trend=0.0,
+                predicted_error=np.mean(self._window),
+                trend_status="STABLE"
+            )
+
+        # 线性回归：y = a + b·x
+        errors = np.array(self._window)
+        x = np.arange(len(errors), dtype=np.float64)
+        n = len(x)
+
+        # 最小二乘：b = (n·Σxy - Σx·Σy) / (n·Σx² - (Σx)²)
+        sum_x = np.sum(x)
+        sum_y = np.sum(errors)
+        sum_xy = np.sum(x * errors)
+        sum_x2 = np.sum(x * x)
+
+        denominator = n * sum_x2 - sum_x * sum_x
+        if abs(denominator) < 1e-10:
+            slope = 0.0
+        else:
+            slope = (n * sum_xy - sum_x * sum_y) / denominator
+
+        intercept = (sum_y - slope * sum_x) / n
+
+        # 预测下一帧误差
+        predicted = intercept + slope * n
+
+        # 窗口均值
+        window_mean = np.mean(errors)
+
+        # 状态判定
+        if window_mean > self.critical_mean_threshold:
+            status = "CRITICAL"
+        elif abs(slope) > self.drifting_slope_threshold:
+            status = "DRIFTING"
+        elif abs(slope) > self.stable_slope_threshold:
+            status = "DRIFTING" if slope > 0 else "STABLE"
+        else:
+            status = "STABLE"
+
+        return DriftTrendReport(
+            frame_id=epipolar_report.frame_id,
+            window_mean=window_mean,
+            window_trend=slope,
+            predicted_error=predicted,
+            trend_status=status
+        )
+
+    @property
+    def window_data(self) -> np.ndarray:
+        """获取当前窗口数据"""
+        return np.array(self._window)
+
+    def plot_trend(self, save_path: str = "drift_trend.png") -> None:
+        """
+        绘制漂移趋势图（需要 matplotlib）
+        """
+        import matplotlib.pyplot as plt
+
+        errors = np.array(self._window)
+        if len(errors) < 2:
+            return
+
+        x = np.arange(len(errors))
+        coeffs = np.polyfit(x, errors, 1)
+        trend_line = np.polyval(coeffs, x)
+
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.plot(x, errors, 'b.-', label='Epipolar Error', markersize=4)
+        ax.plot(x, trend_line, 'r--', linewidth=2,
+                label=f'Trend (slope={coeffs[0]:.4f} px/frame)')
+
+        ax.axhline(y=self.critical_mean_threshold, color='orange',
+                   linestyle=':', label=f'Critical ({self.critical_mean_threshold}px)')
+        ax.fill_between(x, 0, self.critical_mean_threshold,
+                        alpha=0.1, color='green')
+        ax.fill_between(x, self.critical_mean_threshold, max(errors) * 1.2,
+                        alpha=0.1, color='red')
+
+        ax.set_xlabel('Frame (in window)')
+        ax.set_ylabel('Mean Epipolar Error [px]')
+        ax.set_title('Stereo Extrinsics Drift Trend')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=150)
+        plt.close()
+        print(f"[INFO] Drift trend plot saved to: {save_path}")
 
 
 # ════════════════════════════════════════════════

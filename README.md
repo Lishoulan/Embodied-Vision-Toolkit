@@ -9,6 +9,7 @@
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.x-5C3EE8?logo=opencv&logoColor=white)](https://opencv.org/)
 [![Eigen](https://img.shields.io/badge/Eigen-3.4-00599C?logo=eigen&logoColor=white)](https://eigen.tuxfamily.org/)
 [![SLAM](https://img.shields.io/badge/Domain-SLAM-FF6F00?logo=robot&logoColor=white)]()
+[![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/Lishoulan/Embodied-Vision-Toolkit/actions)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 </div>
@@ -30,6 +31,7 @@
 | 文件 | 语言 | 核心能力 |
 |------|------|----------|
 | [`fisheye_undistort.cpp`](01_Calibration_and_Stereo/fisheye_undistort.cpp) | C++ | 基于等距模型（Equidistant / Kannala-Brandt）的超大视场角鱼眼去畸变 |
+| [`double_sphere_undistort.cpp`](01_Calibration_and_Stereo/double_sphere_undistort.cpp) | C++ | 基于 Double Sphere 模型的闭式反投影去畸变，仅 6 参数，边缘精度优于 KB |
 | [`baseline_eigen.cpp`](01_Calibration_and_Stereo/baseline_eigen.cpp) | C++ | 利用 Eigen3 解算 $4 \times 4$ 齐次变换矩阵，SVD 投影至 $SO(3)$ 后求取物理基线 |
 | [`stereo_pointcloud.cpp`](01_Calibration_and_Stereo/stereo_pointcloud.cpp) | C++ | 基于极线几何与 SGBM 视差计算的逆向 3D 点云重建，输出 PLY |
 
@@ -52,6 +54,7 @@
 |------|------|----------|
 | [`photometric_stereo.py`](02_Visuo_Tactile_Perception/photometric_stereo.py) | Python | 光度立体视觉——解构朗伯反射模型，提取表面 2D 法向量场 |
 | [`fft_poisson_integration.py`](02_Visuo_Tactile_Perception/fft_poisson_integration.py) | Python | 基于频域 FFT 的二维泊松积分，法向量梯度场 → 亚毫米级高度场 |
+| [`multigrid_poisson_integration.py`](02_Visuo_Tactile_Perception/multigrid_poisson_integration.py) | Python | 基于多重网格法（Multigrid）的泊松积分，O(N) 收敛，与 FFT 对比验证 |
 
 <details>
 <summary>📖 物理原理简述</summary>
@@ -89,6 +92,16 @@ $$d = \frac{|\mathbf{x}_2^T \cdot \mathbf{F} \cdot \mathbf{x}_1|}{\sqrt{l_0^2 + 
 
 当机械碰撞或热胀冷缩导致外参漂移时，特征点到极线的距离 $d$ 显著增大，系统自动告警。
 
+#### 📈 漂移趋势预测
+
+基于滑动窗口的线性回归，实现**提前告警**而非仅事后检测：
+
+| 状态 | 判定条件 | 含义 |
+|------|----------|------|
+| `STABLE` | 斜率 < 0.01 px/frame | 外参稳定，正常运行 |
+| `DRIFTING` | 斜率 > 0.05 px/frame | 检测到持续漂移趋势（热胀冷缩） |
+| `CRITICAL` | 窗口均值 > 3.0 px | 极线误差已超出安全范围 |
+
 #### 🧹 3DGS 数据清洗管线
 
 ```
@@ -104,15 +117,29 @@ $$d = \frac{|\mathbf{x}_2^T \cdot \mathbf{F} \cdot \mathbf{x}_1|}{\sqrt{l_0^2 + 
 ```
 Embodied-Vision-Toolkit/
 ├── 01_Calibration_and_Stereo/          # 相机底层几何与立体视觉
-│   ├── fisheye_undistort.cpp           # 鱼眼等距模型去畸变
+│   ├── fisheye_undistort.cpp           # KB 等距模型鱼眼去畸变
+│   ├── double_sphere_undistort.cpp     # Double Sphere 闭式反投影去畸变
 │   ├── baseline_eigen.cpp              # Eigen3 齐次变换基线解算
 │   └── stereo_pointcloud.cpp           # SGBM 视差 → 3D 点云
 ├── 02_Visuo_Tactile_Perception/        # 微观触觉 3D 感知
 │   ├── photometric_stereo.py           # 光度立体视觉法向量提取
-│   └── fft_poisson_integration.py      # FFT 泊松积分高度场重建
+│   ├── fft_poisson_integration.py      # FFT 泊松积分高度场重建
+│   └── multigrid_poisson_integration.py # Multigrid 泊松积分（对比验证）
 ├── 03_Data_Doctor_for_SLAM/            # SLAM 护航医生与 3DGS 预处理
-│   ├── data_doctor.py                  # 光学退化拦截 + 极线漂移监控
+│   ├── data_doctor.py                  # 光学退化拦截 + 极线漂移监控 + 趋势预测
 │   └── 3dgs_data_pipeline.py          # 3DGS/NeRF 数据清洗管线
+├── notebooks/                          # 合成数据 Demo（开箱即运行）
+│   ├── demo_photometric_stereo.ipynb   # Module 2 完整演示
+│   └── demo_drift_trend.ipynb          # Module 3 漂移趋势预测演示
+├── benchmarks/                         # 性能基准
+│   ├── benchmark_undistort.cpp         # KB vs Double Sphere 去畸变耗时对比
+│   └── CMakeLists.txt
+├── .github/workflows/ci.yml            # GitHub Actions CI
+├── CMakeLists.txt                      # C++ 构建系统
+├── .clang-format                       # C++ 代码风格
+├── ruff.toml                           # Python 代码风格
+├── .gitignore
+├── LICENSE                             # MIT
 ├── README.md
 └── requirements.txt
 ```
@@ -175,8 +202,11 @@ mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
 
-# 运行鱼眼去畸变
+# 运行 KB 鱼眼去畸变
 ./fisheye_undistort calib.yaml fisheye_image.png output.png
+
+# 运行 Double Sphere 去畸变
+./double_sphere_undistort fisheye_image.png ds_params.yaml output.png
 
 # 运行基线解算
 ./baseline_eigen
@@ -185,33 +215,15 @@ make -j$(nproc)
 ./stereo_pointcloud left.png right.png Q.yaml output.ply
 ```
 
-<details>
-<summary>🔧 CMakeLists.txt 参考</summary>
+### Jupyter Demo（无需外部数据）
 
-```cmake
-cmake_minimum_required(VERSION 3.16)
-project(EmbodiedVisionToolkit LANGUAGES CXX)
+```bash
+# Module 2: 光度立体视觉 + 泊松积分完整演示
+jupyter notebook notebooks/demo_photometric_stereo.ipynb
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-find_package(OpenCV REQUIRED)
-find_package(Eigen3 REQUIRED)
-
-# fisheye_undistort
-add_executable(fisheye_undistort 01_Calibration_and_Stereo/fisheye_undistort.cpp)
-target_link_libraries(fisheye_undistort ${OpenCV_LIBS})
-
-# baseline_eigen
-add_executable(baseline_eigen 01_Calibration_and_Stereo/baseline_eigen.cpp)
-target_link_libraries(baseline_eigen Eigen3::Eigen)
-
-# stereo_pointcloud
-add_executable(stereo_pointcloud 01_Calibration_and_Stereo/stereo_pointcloud.cpp)
-target_link_libraries(stereo_pointcloud ${OpenCV_LIBS})
+# Module 3: 漂移趋势预测演示
+jupyter notebook notebooks/demo_drift_trend.ipynb
 ```
-
-</details>
 
 ---
 
