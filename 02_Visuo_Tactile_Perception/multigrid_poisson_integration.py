@@ -114,32 +114,21 @@ def restrict(fine: np.ndarray) -> np.ndarray:
 def prolongate(coarse: np.ndarray, target_shape: tuple[int, int]) -> np.ndarray:
     """
     插值算子（Prolongation）：粗网格 → 细网格
-    使用双线性插值
+    使用双线性插值（scipy.ndimage.zoom）
     """
-    fine = np.zeros(target_shape)
+    from scipy.ndimage import zoom
+
     h_c, w_c = coarse.shape
+    scale_h = target_shape[0] / h_c
+    scale_w = target_shape[1] / w_c
 
-    # 直接复制粗网格点
-    for i in range(h_c):
-        for j in range(w_c):
-            if 2 * i < target_shape[0] and 2 * j < target_shape[1]:
-                fine[2 * i, 2 * j] = coarse[i, j]
-
-    # 双线性插值填充中间点
-    for i in range(target_shape[0]):
-        for j in range(target_shape[1]):
-            if i % 2 == 0 and j % 2 == 1 and i < target_shape[0] and j + 1 < target_shape[1]:
-                # 水平插值
-                fine[i, j] = 0.5 * (fine[i, j - 1] + fine[i, j + 1]) if (j - 1 >= 0 and j + 1 < target_shape[1]) else 0
-            elif i % 2 == 1 and j % 2 == 0:
-                # 垂直插值
-                fine[i, j] = 0.5 * (fine[i - 1, j] + fine[i + 1, j]) if (i - 1 >= 0 and i + 1 < target_shape[0]) else 0
-            elif i % 2 == 1 and j % 2 == 1:
-                # 对角插值
-                fine[i, j] = 0.25 * (fine[i - 1, j - 1] + fine[i - 1, j + 1] +
-                                      fine[i + 1, j - 1] + fine[i + 1, j + 1])
-
-    return fine
+    fine = zoom(coarse, (scale_h, scale_w), order=1)
+    # 裁剪或填充至精确目标尺寸
+    result = np.zeros(target_shape)
+    h_min = min(fine.shape[0], target_shape[0])
+    w_min = min(fine.shape[1], target_shape[1])
+    result[:h_min, :w_min] = fine[:h_min, :w_min]
+    return result
 
 
 # ════════════════════════════════════════════════
