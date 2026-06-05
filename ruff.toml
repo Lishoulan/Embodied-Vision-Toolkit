@@ -18,6 +18,7 @@ select = [
 ]
 ignore = [
     "E501",  # line too long (handled by formatter)
+    "E741",  # ambiguous variable name (math: I = intensity)
     "N803",  # argument name should be lowercase (math conventions: P, Q, Z)
     "N806",  # variable in function should be lowercase (math: K, F, R, T)
 ]

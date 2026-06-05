@@ -17,14 +17,13 @@
 """
 
 import json
-import shutil
 import subprocess
-import numpy as np
-import cv2
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
+from typing import Optional
 
+import cv2
+import numpy as np
 
 # ════════════════════════════════════════════════
 # 配置
@@ -43,7 +42,7 @@ class PipelineConfig:
     calib_file: str = ""                   # 标定文件路径
 
     # 分辨率统一
-    target_resolution: Tuple[int, int] = (0, 0)  # (W, H)，0 表示保持原分辨率
+    target_resolution: tuple[int, int] = (0, 0)  # (W, H)，0 表示保持原分辨率
 
     # COLMAP
     run_colmap: bool = True
@@ -62,7 +61,7 @@ class PipelineConfig:
 def filter_degraded_frames(
     image_dir: str,
     config: PipelineConfig
-) -> Tuple[List[str], List[str]]:
+) -> tuple[list[str], list[str]]:
     """
     过滤运动模糊与曝光异常帧
 
@@ -113,9 +112,9 @@ def filter_degraded_frames(
 # ════════════════════════════════════════════════
 
 def undistort_and_resize(
-    image_paths: List[str],
+    image_paths: list[str],
     config: PipelineConfig
-) -> List[str]:
+) -> list[str]:
     """
     执行去畸变与分辨率统一，输出至 config.output_dir/images/
     """
@@ -194,7 +193,7 @@ def run_colmap_sfm(
             "--output_path", str(sparse_dir)
         ], check=True, capture_output=True)
 
-        print(f"[Step 3] COLMAP SfM completed")
+        print("[Step 3] COLMAP SfM completed")
         return True
 
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
@@ -220,7 +219,7 @@ def export_transforms_json(
 
     # 如果 COLMAP 成功，从 sparse 读取位姿
     frames = []
-    img_paths = sorted(Path(image_dir).glob("*.png"))
+    sorted(Path(image_dir).glob("*.png"))
 
     if colmap_dir and Path(colmap_dir).exists():
         # 读取 COLMAP cameras.bin / images.bin
@@ -270,7 +269,7 @@ def run_pipeline(
     healthy, rejected = filter_degraded_frames(image_dir, config)
 
     # Step 2: 去畸变与分辨率统一
-    clean_paths = undistort_and_resize(healthy, config)
+    undistort_and_resize(healthy, config)
 
     # Step 3: COLMAP 位姿估计
     colmap_dir = None

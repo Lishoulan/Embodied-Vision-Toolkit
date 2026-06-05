@@ -18,10 +18,9 @@
     参考：Briggs, Henson, McCormick, "A Multigrid Tutorial", SIAM 2000
 """
 
-import numpy as np
-from typing import Optional, Tuple
-from fft_poisson_integration import fft_poisson_integration
 
+import numpy as np
+from fft_poisson_integration import fft_poisson_integration
 
 # ════════════════════════════════════════════════
 # 基础迭代算子
@@ -112,7 +111,7 @@ def restrict(fine: np.ndarray) -> np.ndarray:
     return coarse
 
 
-def prolongate(coarse: np.ndarray, target_shape: Tuple[int, int]) -> np.ndarray:
+def prolongate(coarse: np.ndarray, target_shape: tuple[int, int]) -> np.ndarray:
     """
     插值算子（Prolongation）：粗网格 → 细网格
     使用双线性插值
@@ -303,6 +302,7 @@ def compare_methods(
 # ──────────────────────────────────────────────
 if __name__ == "__main__":
     import argparse
+
     import matplotlib.pyplot as plt
 
     parser = argparse.ArgumentParser(

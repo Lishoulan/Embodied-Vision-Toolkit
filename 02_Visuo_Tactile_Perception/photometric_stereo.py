@@ -15,17 +15,18 @@
         - 可视化：法向量球面映射 / RGB 编码
 """
 
-import numpy as np
+from pathlib import Path
+from typing import Optional
+
 import cv2
 import matplotlib.pyplot as plt
-from pathlib import Path
-from typing import List, Tuple, Optional
+import numpy as np
 
 
 def load_images_and_lights(
     image_dir: str,
     light_file: str
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     加载多光照图像与对应光源方向矩阵
 
@@ -61,7 +62,7 @@ def load_images_and_lights(
 def photometric_stereo(
     images: np.ndarray,
     lights: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """
     光度立体视觉核心解算
 

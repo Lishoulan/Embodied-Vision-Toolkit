@@ -13,13 +13,12 @@
     本工具在数据进入前端之前进行"体检"，拦截病态帧，监控硬件退化。
 """
 
-import numpy as np
-import cv2
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass, field
 from collections import deque
+from dataclasses import dataclass
+from pathlib import Path
 
+import cv2
+import numpy as np
 
 # ════════════════════════════════════════════════
 # 数据结构
@@ -87,7 +86,7 @@ class OpticalDegradationDetector:
         self.bright_pixel_value = bright_pixel_value
         self.dark_pixel_value = dark_pixel_value
 
-    def detect_blur(self, gray: np.ndarray) -> Tuple[float, bool]:
+    def detect_blur(self, gray: np.ndarray) -> tuple[float, bool]:
         """
         拉普拉斯方差法检测运动模糊
 
@@ -98,7 +97,7 @@ class OpticalDegradationDetector:
         variance = lap.var()
         return variance, variance < self.blur_threshold
 
-    def detect_exposure(self, gray: np.ndarray) -> Tuple[float, bool, bool]:
+    def detect_exposure(self, gray: np.ndarray) -> tuple[float, bool, bool]:
         """
         检测曝光异常
 
@@ -171,7 +170,7 @@ class EpipolarDriftMonitor:
         self.drift_threshold = drift_threshold
         self.outlier_threshold = outlier_threshold
         self.outlier_ratio_threshold = outlier_ratio_threshold
-        self._history: List[EpipolarDriftReport] = []
+        self._history: list[EpipolarDriftReport] = []
 
     @staticmethod
     def point_to_epipolar_line_distance(
@@ -234,7 +233,7 @@ class EpipolarDriftMonitor:
         return report
 
     @property
-    def history(self) -> List[EpipolarDriftReport]:
+    def history(self) -> list[EpipolarDriftReport]:
         return self._history
 
 
@@ -307,10 +306,7 @@ class DriftTrendPredictor:
         sum_x2 = np.sum(x * x)
 
         denominator = n * sum_x2 - sum_x * sum_x
-        if abs(denominator) < 1e-10:
-            slope = 0.0
-        else:
-            slope = (n * sum_xy - sum_x * sum_y) / denominator
+        slope = 0.0 if abs(denominator) < 1e-10 else (n * sum_xy - sum_x * sum_y) / denominator
 
         intercept = (sum_y - slope * sum_x) / n
 
@@ -387,7 +383,7 @@ class DriftTrendPredictor:
 def batch_diagnose(
     image_dir: str,
     output_csv: str = "diagnosis_report.csv"
-) -> List[DegradationReport]:
+) -> list[DegradationReport]:
     """
     对目录下所有图像进行批量退化诊断
     """

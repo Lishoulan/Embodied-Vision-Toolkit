@@ -14,13 +14,13 @@
     将光度立体视觉输出的法向量转化为可度量的接触面高度场。
 """
 
-import numpy as np
-import cv2
+from typing import Optional
+
 import matplotlib.pyplot as plt
-from typing import Optional, Tuple
+import numpy as np
 
 
-def normals_to_gradients(normals: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def normals_to_gradients(normals: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     从表面法向量 (nx, ny, nz) 恢复梯度场 (p, q)
 

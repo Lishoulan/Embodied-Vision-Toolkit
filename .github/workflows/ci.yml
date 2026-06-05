@@ -46,4 +46,4 @@ jobs:
       - name: Test synthetic data
         run: |
           cd 02_Visuo_Tactile_Perception
-          python multigrid_poisson_integration.py --synthetic
+          PYTHONPATH=. python multigrid_poisson_integration.py --synthetic
