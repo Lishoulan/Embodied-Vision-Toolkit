@@ -229,12 +229,12 @@ jupyter notebook notebooks/demo_drift_trend.ipynb
 
 ## 👤 About
 
-**作者**：[Your Name Here]
+**作者**：力手蓝
 
 光学硕士，现从事机器人数据与算法开发。具备**光学硬件底层**与**算法架构顶层**的跨界能力——既能在频域推演光子传播，也能在 C++ 里手搓齐次变换。坚信：不理解物理的算法工程师，终将被物理淘汰。
 
-> 📧 Email: [your.email@example.com]
-> 🏠 GitHub: [https://github.com/your-username]
+> 📧 Email: 2441520172@qq.com
+> 🏠 GitHub: [https://github.com/Lishoulan]
 
 ---
 
